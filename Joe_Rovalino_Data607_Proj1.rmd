@@ -1,0 +1,126 @@
+---
+title: "Joe_Rovalino_Data607_proj1"
+author: "Joe Rovalino"
+date: "9/12/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+Install two packages to be used: downloader and Stringr
+```{r}
+install.packages("downloader")
+install.packages("stringr")
+```
+1) I uploaded the Chess tournament file to my Github directory to connect to web to simulate getting file. Found some documentation on downloader package using instructions:
+https://cran.r-project.org/web/packages/downloader/downloader.pdf
+
+```{r}
+library(downloader)
+url <-"https://raw.githubusercontent.com/jrovalino/jrovalino-Data607-proj1/master/tournamentinfo.txt"
+url
+#?download
+tourfile <- "tournamentinfo.txt"
+tourfile
+download(url, tourfile)
+```
+
+2) Get the stringr library installed 
+
+```{r}
+library(stringr)
+#?readLines
+rslts <- readLines("tournamentinfo.txt")
+# Automated data collection in R (ADC in R) chapter 8 - see table 8.3 selected symbols
+#wiht special #meaning \w word characters [[:alnum:]_].
+# Automated data collection in R (ADC in R) chapter 8 - pg 204 ^ "Putting the former #at the beginning of a character class matches the inverse of the character class' #contents
+# another good reference -  #https://stringr.tidyverse.org/articles/regular-expressions.html
+
+pname <- unlist(str_extract_all(rslts, "\\w+[^USCF|a-z]\\w+ \\w+"))
+#pname 
+
+pstate<- unlist(str_extract_all(rslts,"[A-Z][A-Z][[ ]][\\|]"))
+#pstate
+#?str_split simplify = F creates char vector, simplify = True  creates a char matrix
+pstate <- str_split(pstate, "[[ ]][\\|]", simplify=TRUE)
+#pstate
+#only nneed first column in matrix
+pstate <- pstate[, 1] 
+pstate 
+totpts <- unlist(str_extract_all(rslts, "\\d\\.\\d"))
+totpts  
+prerating <- unlist(str_extract_all(rslts, "[R][:]([[ ]]+)([[:alnum:]]+)", simplify=FALSE))
+  #prerating
+  prerating <- unlist(str_extract_all(prerating, "([[^R: ]]+[[:alnum:]]+)", simplify=FALSE))
+  prerating
+  
+```
+  
+#Needed to read some refresher/background on looping and used primarily the text
+# https://r4ds.had.co.nz/iteration.html - chapter on iterations
+
+```{r}
+#totol number of points (tnop)
+#extract round component for each player by leveraging |#.# and greedy quantification #p203 table 8.2 
+meanprep<- unlist(str_extract_all(rslts, "\\|[0-9].*"))
+meanprep[1]
+#need to extract out the opponent #'s to use as an index for later use in getting pre-rating. 
+meanprep2 <-unlist(str_replace_all(meanprep, "\\s{1,2}\\|","00|"))
+class(meanprep2)
+meanprep2[1]
+class(meanprep2)
+?str_extract_all
+#Need to figure out the problem with moving to matrix or to list creating eash
+#meanprep3 <- matrix(nrows=7)
+meanprep3 <- (str_extract_all(meanprep2, "\\s\\d{1,2}", simplify = TRUE))
+meanprep3[1,]
+meanprep3 <-gsub('\\s+', '', meanprep3)
+meanprep3[1,]
+
+#meanprep3 <- apply(meanprep3, 1, FUN = str_trim)
+#meanprep3[1]
+ncol(meanprep3)
+nrow(meanprep3)
+length(meanprep3)
+#garbage meancalc <- matrix(unlist(meanprep3), byrow=TRUE,  nrow=ncol(meanprep3) )
+#garbade meancalc[1,]
+
+mode(meanprep3) = "numeric"
+class( meanprep3 [1, ])
+meanprep3 [1, ]
+
+tmean <- meanprep3
+tmean
+
+#m <- matrix(unlist(meanprep3), nrow(meanprep3), dimnames = dimnames(meanprep3))
+#rowMeans(m)
+#data.frame(datamatrix)
+
+
+
+#going to use the row and column to populate the matrix so that average can be done.
+#class(nrow(tmean))
+tmean
+nrow(tmean)
+ncol(tmean)
+is.numeric(tmean[1,1])
+
+for (i in 1:nrow(tmean)) {
+  for (j in 1:ncol(tmean)){
+    if (tmean[i,j] == 0){tmean[i,j] = NA}
+    else{tmean[i,j] <- prerating[tmean[i,j]]}}}
+
+
+tmean[1,1]
+df <- data.frame(pname,pstate, totpts,prerating)
+df
+# Exporting the result into a CSV file.
+write.csv(df, "chesssummary.csv", row.names=FALSE)
+  
+```
